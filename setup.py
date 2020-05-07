@@ -7,7 +7,8 @@ setup(
     install_requires=[
         'numpy',
         'scipy',
-        'scikit-learn'
+        'scikit-learn',
+        'matplotlib',
     ],
     entry_points={
         'console_scripts': [],

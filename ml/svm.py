@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from sklearn.datasets import make_blobs
+
+import matplotlib.pyplot as plt
+
 
 class SVM:
     def __init__(self, c):
@@ -16,7 +20,7 @@ class SVM:
         self.w = np.zeros(D)
         self.b = 0
 
-        for _ in range(100):
+        for _ in range(500):
             for i in range(N):
                 x2 = X[i]
                 y2 = self.func(x2)
@@ -48,7 +52,7 @@ class SVM:
                         Emax = Ediff
                         J = j
 
-                print('selected: ', i, J)
+                # print('selected: ', i, J)
                 x1 = X[J]
                 t1 = T[J]
                 E1 = self.func(x1) - t1
@@ -56,11 +60,13 @@ class SVM:
 
                 L, H = self.calc_clip(t1, t2, a1_old, a2_old)
 
-                print('Energy: ', E1 - E2)
-                print('L: ', L)
-                print('H: ', H)
-                a2_unclip = a2_old + t2 * (E1 - E2) / (x1.dot(x1) - 2 * x1.dot(x2) + x2.dot(x2))
-                print('a2_unclip: ', a2_unclip)
+                kernels = x1.dot(x1) - 2 * x1.dot(x2) + x2.dot(x2)
+                a2_unclip = (kernels * a2_old + t2 * (E1 - E2)) / kernels
+
+                # print('Energy: ', E1 - E2)
+                # print('L: ', L)
+                # print('H: ', H)
+                # print('a2_unclip: ', a2_unclip)
                 a2_new = min(max(a2_unclip, L), H)
 
                 a1_new = a1_old + t1 * t2 * (a2_old - a2_new)
@@ -70,16 +76,35 @@ class SVM:
 
                 self.w = ((self.alpha * T).reshape((N, 1)) * X).sum(axis=0)
 
+                b = 0.
+                n_non_support = 0
                 for k in range(N):
                     if not np.isclose(self.alpha[k], 0):
-                        self.b = T[k] - self.w.dot(X[k])
-                        break
+                        b += T[k] - self.w.dot(X[k])
+                        n_non_support += 1
 
-                print(self.alpha)
-                print(self.w)
-                print(self.b)
+                if n_non_support != 0:
+                    self.b = b / n_non_support
+
+                # print(self.alpha)
+                # print(self.w)
+                # print(self.b)
+
+        print(self.alpha)
+        print(self.w)
+        print(self.b)
 
         return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        N = X.shape[0]
+        T = np.zeros(N)
+
+        for i in range(N):
+            y = self.func(X[i])
+            T[i] = 1 if y >= 0 else -1
+
+        return T
 
     def func(self, x: np.ndarray) -> float:
         return self.w.dot(x) + self.b
@@ -96,12 +121,25 @@ class SVM:
 
 
 def main():
+    X, T = make_blobs(n_samples=100, centers=2, n_features=2)
+    T[T == 0] = -1
+
+    plt.figure(figsize=(8, 7))
+    # plt.scatter(X[:, 0], X[:, 1], marker='o', c=T, s=25, edgecolor='k')
+    # plt.show()
+
     svm = SVM(1)
 
-    X = np.array([[1, 0], [2, 0], [4, 0], [5, 0]])
-    T = np.array([1, 1, -1, -1])
+    # X = np.array([[1], [1.5], [2], [4], [4.8], [5]])
+    # T = np.array([1, 1, 1, -1, -1, -1])
 
     svm.fit(X, T)
+    plt.scatter(X[:, 0], X[:, 1], marker='o', c=svm.predict(X), s=25, edgecolor='k')
+
+    Xl = np.linspace(X[:, 0].min(), X[:, 0].max(), 10)
+    plt.plot(Xl, - (svm.w[0] * Xl + svm.b) / svm.w[1])
+
+    plt.show()
 
 
 if __name__ == '__main__':
